@@ -1,5 +1,6 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get_it/get_it.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/camera/camera_service.dart';
 import 'core/constants/app_constants.dart';
@@ -8,6 +9,7 @@ import 'core/haptics/haptic_service.dart';
 import 'core/model_update/model_update_service.dart';
 import 'core/network/connectivity_service.dart';
 import 'core/network/dio_client.dart';
+import 'core/settings/settings_service.dart';
 import 'core/sync/sync_service.dart';
 import 'core/tts/tts_service.dart';
 import 'core/voice/voice_command_service.dart';
@@ -51,13 +53,19 @@ Future<void> configureDependencies() async {
   await db.init();
   getIt.registerSingleton<AppDatabase>(db);
 
+  // ─── Settings (must come before TTS so it can seed language/rate) ────────
+  final prefs = await SharedPreferences.getInstance();
+  final settings = SettingsService(prefs);
+  getIt.registerSingleton<SettingsService>(settings);
+
   final tts = TtsService();
-  await tts.init('en-CM');
+  await tts.init(settings.language.value);
+  await tts.setSpeechRate(settings.speechRate.value);
   getIt.registerSingleton<TtsService>(tts);
 
   getIt.registerLazySingleton(() => VoiceCommandRouter());
   final voice = VoiceCommandService(getIt());
-  await voice.init('en_CM');
+  await voice.init(settings.language.value.replaceAll('-', '_'));
   getIt.registerSingleton<VoiceCommandService>(voice);
 
   getIt.registerLazySingleton(() => SyncService(getIt(), getIt(), getIt()));

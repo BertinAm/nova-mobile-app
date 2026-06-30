@@ -41,9 +41,10 @@ class CurrencyDetected extends CurrencyState {
 
 class CurrencyNotClear extends CurrencyState {
   final double confidence;
-  const CurrencyNotClear(this.confidence);
+  final bool underExposed;
+  const CurrencyNotClear(this.confidence, {this.underExposed = false});
   @override
-  List<Object?> get props => [confidence];
+  List<Object?> get props => [confidence, underExposed];
 }
 
 class CurrencyError extends CurrencyState {
@@ -84,7 +85,7 @@ class CurrencyBloc extends Bloc<CurrencyEvent, CurrencyState> {
       },
       (currency) async {
         if (!currency.success) {
-          emit(CurrencyNotClear(currency.confidence));
+          emit(CurrencyNotClear(currency.confidence, underExposed: currency.underExposed));
           final lightingHint = currency.underExposed
               ? ' The frame appears dark. Turn on the torch if possible.'
               : '';

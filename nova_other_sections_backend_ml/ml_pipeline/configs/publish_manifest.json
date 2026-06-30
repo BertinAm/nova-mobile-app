@@ -1,0 +1,38 @@
+{
+  "org": "nova-assistive",
+  "models": [
+    {
+      "repo_name": "obstacle-detection",
+      "module_id": "MOD-01",
+      "version": "1.0.0",
+      "pytorch_checkpoint": "checkpoints/obstacle_student_best.pth",
+      "tflite_model": "exports/obstacle_detection_v1.tflite",
+      "labels_file": "labels/coco_labels_extended.txt",
+      "config": {
+        "architecture": "YOLOv8n",
+        "input_size": [320, 320],
+        "num_classes": 83,
+        "distilled_from": "YOLOv8m",
+        "near_threshold_m": 1.5,
+        "warning_threshold_m": 3.0,
+        "confidence_threshold": 0.55,
+        "suppression_seconds": 2.0
+      }
+    },
+    {
+      "repo_name": "currency-detection",
+      "module_id": "MOD-04",
+      "version": "1.0.0",
+      "pytorch_checkpoint": "checkpoints/currency_student_best.pth",
+      "tflite_model": "exports/currency_detection_v1.tflite",
+      "labels_file": "labels/cfa_labels.txt",
+      "config": {
+        "architecture": "MobileNetV3-Small",
+        "input_size": [224, 224],
+        "num_classes": 5,
+        "distilled_from": "EfficientNet-B4",
+        "confidence_threshold": 0.85
+      }
+    }
+  ]
+}

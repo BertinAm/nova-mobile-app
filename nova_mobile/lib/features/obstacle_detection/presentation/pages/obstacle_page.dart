@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/camera/camera_service.dart';
-
+import '../../../../core/settings/settings_service.dart';
 import '../../../../injection_container.dart';
 import '../../domain/entities/obstacle_detection_result.dart';
 import '../bloc/obstacle_bloc.dart';
@@ -20,15 +20,8 @@ class ObstaclePage extends StatelessWidget {
   }
 }
 
-class _ObstacleView extends StatefulWidget {
+class _ObstacleView extends StatelessWidget {
   const _ObstacleView();
-
-  @override
-  State<_ObstacleView> createState() => _ObstacleViewState();
-}
-
-class _ObstacleViewState extends State<_ObstacleView> {
-  bool _showPreview = false;
 
   @override
   Widget build(BuildContext context) {
@@ -47,78 +40,152 @@ class _ObstacleViewState extends State<_ObstacleView> {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  // Status indicator — live region for TalkBack
                   Semantics(
                     label: detecting
                         ? 'Obstacle detection is running'
                         : 'Obstacle detection is stopped',
                     liveRegion: true,
                     child: Text(
-                      detecting ? 'Running' : 'Stopped',
+                      detecting ? '🟢 Running' : '🔴 Stopped',
                       style: Theme.of(context).textTheme.headlineMedium,
                     ),
                   ),
+
                   const SizedBox(height: 16),
-                  ElevatedButton.icon(
-                    onPressed: detecting
-                        ? null
-                        : () => context
-                            .read<ObstacleBloc>()
-                            .add(const StartObstacleDetection()),
-                    icon: const Icon(Icons.play_arrow),
-                    label: const Text('Start obstacle detection'),
-                  ),
-                  const SizedBox(height: 12),
-                  ElevatedButton.icon(
-                    onPressed: detecting
-                        ? () => context
-                            .read<ObstacleBloc>()
-                            .add(const StopObstacleDetection())
-                        : null,
-                    icon: const Icon(Icons.stop),
-                    label: const Text('Stop obstacle detection'),
-                  ),
-                  const SizedBox(height: 12),
-                  SwitchListTile(
-                    title: const Text('Show Camera Preview (Debug)'),
-                    value: _showPreview,
-                    onChanged: (val) => setState(() => _showPreview = val),
-                  ),
-                  if (_showPreview && getIt<CameraService>().controller != null)
-                    Expanded(
-                      flex: 2,
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(vertical: 8),
-                        clipBehavior: Clip.hardEdge,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: CameraPreview(getIt<CameraService>().controller!),
-                      ),
+
+                  Semantics(
+                    button: true,
+                    label: 'Start obstacle detection',
+                    enabled: !detecting,
+                    child: ElevatedButton.icon(
+                      onPressed: detecting
+                          ? null
+                          : () => context
+                              .read<ObstacleBloc>()
+                              .add(const StartObstacleDetection()),
+                      icon: const Icon(Icons.play_arrow),
+                      label: const Text('Start obstacle detection'),
+                      style: ElevatedButton.styleFrom(minimumSize: const Size.fromHeight(52)),
                     ),
+                  ),
+
                   const SizedBox(height: 12),
-                  if (state is ObstacleError)
-                    Text(state.message, style: const TextStyle(color: Colors.redAccent)),
-                  Expanded(
-                    flex: 3,
-                    child: ListView.builder(
-                      itemCount: obstacles.length,
-                      itemBuilder: (context, index) {
-                        final obstacle = obstacles[index];
-                        return Semantics(
-                          label:
-                              '${obstacle.label}, ${obstacle.spokenDirection}, ${obstacle.estimatedDistanceMeters.toStringAsFixed(1)} meters',
-                          child: Card(
-                            child: ListTile(
-                              leading: const Icon(Icons.warning_amber),
-                              title: Text('${obstacle.label} ${obstacle.spokenDirection}'),
-                              subtitle: Text(
-                                '${obstacle.zoneName} • ${obstacle.estimatedDistanceMeters.toStringAsFixed(1)} m • ${(obstacle.confidence * 100).toStringAsFixed(0)}%',
+
+                  Semantics(
+                    button: true,
+                    label: 'Stop obstacle detection',
+                    enabled: detecting,
+                    child: ElevatedButton.icon(
+                      onPressed: detecting
+                          ? () => context
+                              .read<ObstacleBloc>()
+                              .add(const StopObstacleDetection())
+                          : null,
+                      icon: const Icon(Icons.stop),
+                      label: const Text('Stop obstacle detection'),
+                      style: ElevatedButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // ─── Camera preview driven by global SettingsService ──────────
+                  ValueListenableBuilder<bool>(
+                    valueListenable: getIt<SettingsService>().debugCameraPreview,
+                    builder: (_, showPreview, __) {
+                      final ctrl = getIt<CameraService>().controller;
+                      if (!showPreview || ctrl == null) return const SizedBox.shrink();
+                      return Expanded(
+                        flex: 2,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 6),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.videocam, size: 16),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'Camera Preview (Debug)',
+                                    style: Theme.of(context).textTheme.labelMedium,
+                                  ),
+                                ],
                               ),
                             ),
-                          ),
-                        );
-                      },
+                            Expanded(
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: CameraPreview(ctrl),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+
+                  if (state is ObstacleError) ...[
+                    const SizedBox(height: 8),
+                    Semantics(
+                      liveRegion: true,
+                      label: 'Error: ${state.message}',
+                      child: Text(
+                        state.message,
+                        style: const TextStyle(color: Colors.redAccent),
+                      ),
                     ),
+                  ],
+
+                  const SizedBox(height: 8),
+
+                  // ─── Detection list ────────────────────────────────────────
+                  Expanded(
+                    flex: 3,
+                    child: obstacles.isEmpty
+                        ? Center(
+                            child: Semantics(
+                              liveRegion: true,
+                              label: detecting ? 'Scanning for obstacles' : 'Press start to begin scanning',
+                              child: Text(
+                                detecting ? 'Scanning…' : 'Press Start to begin.',
+                                style: Theme.of(context).textTheme.bodyLarge,
+                              ),
+                            ),
+                          )
+                        : ListView.builder(
+                            itemCount: obstacles.length,
+                            itemBuilder: (context, index) {
+                              final obstacle = obstacles[index];
+                              final semanticDesc =
+                                  '${obstacle.label} detected ${obstacle.spokenDirection}, '
+                                  '${obstacle.estimatedDistanceMeters.toStringAsFixed(1)} metres, '
+                                  '${obstacle.zoneName} zone.';
+                              return Semantics(
+                                label: semanticDesc,
+                                liveRegion: true,
+                                child: Card(
+                                  child: ListTile(
+                                    leading: Icon(
+                                      obstacle.zone == ObstacleZone.near
+                                          ? Icons.warning
+                                          : Icons.warning_amber,
+                                      color: obstacle.zone == ObstacleZone.near
+                                          ? Colors.red
+                                          : Colors.orange,
+                                    ),
+                                    title: Text('${obstacle.label} — ${obstacle.spokenDirection}'),
+                                    subtitle: Text(
+                                      '${obstacle.zoneName} • '
+                                      '${obstacle.estimatedDistanceMeters.toStringAsFixed(1)} m • '
+                                      '${(obstacle.confidence * 100).toStringAsFixed(0)}%',
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
                   ),
                 ],
               );
@@ -129,4 +196,3 @@ class _ObstacleViewState extends State<_ObstacleView> {
     );
   }
 }
-

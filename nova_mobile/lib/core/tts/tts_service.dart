@@ -10,7 +10,7 @@ enum TtsPriority { critical, high, normal, low }
 class TtsService {
   final FlutterTts _tts;
   TtsPriority? _currentPriority;
-  double _currentRate = 1.0;
+  double _currentRate = 0.75;   // Natural, clear rate for BVI users (SRS NFR-35)
   String _currentLanguage = 'en-CM';
 
   TtsService({FlutterTts? flutterTts}) : _tts = flutterTts ?? FlutterTts();
