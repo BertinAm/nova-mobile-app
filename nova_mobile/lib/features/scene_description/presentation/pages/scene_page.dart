@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../injection_container.dart';
+import '../../../../main.dart' show globalStopCurrentOption;
 import '../bloc/scene_bloc.dart';
 
 class ScenePage extends StatelessWidget {
@@ -16,13 +17,36 @@ class ScenePage extends StatelessWidget {
   }
 }
 
-class _SceneView extends StatelessWidget {
+class _SceneView extends StatefulWidget {
   const _SceneView();
+
+  @override
+  State<_SceneView> createState() => _SceneViewState();
+}
+
+class _SceneViewState extends State<_SceneView> {
+  @override
+  void initState() {
+    super.initState();
+    globalStopCurrentOption = null; // scene has no continuous process
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final autoStart = ModalRoute.of(context)?.settings.arguments == true;
+      if (autoStart) {
+        context.read<SceneBloc>().add(const RequestSceneDescription());
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    globalStopCurrentOption = null;
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Describe Scene')),
+      appBar: AppBar(title: const Text('Option 3 — Describe Scene')),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(20),
@@ -41,7 +65,7 @@ class _SceneView extends StatelessWidget {
                         color: Theme.of(context).colorScheme.surfaceContainerHighest,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: Theme.of(context).colorScheme.outline.withOpacity(0.4),
+                          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.4),
                         ),
                       ),
                       child: Row(

@@ -20,24 +20,52 @@ class VoiceCommandService {
   VoiceCommandService(this._router, {SpeechToText? speech})
       : _speech = speech ?? SpeechToText();
 
-  static const Map<String, VoiceCommand> _commands = {
-    'start obstacle': VoiceCommand.startObstacle,
-    'stop obstacle': VoiceCommand.stopObstacle,
-    'read text': VoiceCommand.readText,
-    'lire texte': VoiceCommand.readText,
-    'describe scene': VoiceCommand.describeScene,
-    'décrire scène': VoiceCommand.describeScene,
-    'identify money': VoiceCommand.identifyMoney,
-    'check note': VoiceCommand.identifyMoney,
-    'identifier argent': VoiceCommand.identifyMoney,
-    'who is this': VoiceCommand.recogniseFace,
-    'qui est': VoiceCommand.recogniseFace,
-    'call for help': VoiceCommand.emergency,
-    'au secours': VoiceCommand.emergency,
-    'slow down': VoiceCommand.slowTts,
-    'speed up': VoiceCommand.speedUpTts,
-    'stop': VoiceCommand.stopTts,
-  };
+  /// Keyword → command. Checked in order; first match wins.
+  static const List<MapEntry<String, VoiceCommand>> _commandEntries = [
+    // ── Numbered options (most likely to be spoken) ──────────────────────
+    MapEntry('option one',    VoiceCommand.option1),
+    MapEntry('option 1',      VoiceCommand.option1),
+    MapEntry('numéro un',     VoiceCommand.option1),
+    MapEntry('option two',    VoiceCommand.option2),
+    MapEntry('option 2',      VoiceCommand.option2),
+    MapEntry('numéro deux',   VoiceCommand.option2),
+    MapEntry('option three',  VoiceCommand.option3),
+    MapEntry('option 3',      VoiceCommand.option3),
+    MapEntry('numéro trois',  VoiceCommand.option3),
+    MapEntry('option four',   VoiceCommand.option4),
+    MapEntry('option 4',      VoiceCommand.option4),
+    MapEntry('numéro quatre', VoiceCommand.option4),
+    MapEntry('option five',   VoiceCommand.option5),
+    MapEntry('option 5',      VoiceCommand.option5),
+    MapEntry('numéro cinq',   VoiceCommand.option5),
+    MapEntry('option six',    VoiceCommand.option6),
+    MapEntry('option 6',      VoiceCommand.option6),
+    MapEntry('numéro six',    VoiceCommand.option6),
+    // ── Stop / Control ───────────────────────────────────────────────────
+    MapEntry('stop option',   VoiceCommand.stopCurrentOption),
+    MapEntry('arrêter',       VoiceCommand.stopCurrentOption),
+    MapEntry('stop',          VoiceCommand.stopTts),
+    MapEntry('slow down',     VoiceCommand.slowTts),
+    MapEntry('vitesse lente', VoiceCommand.slowTts),
+    MapEntry('speed up',      VoiceCommand.speedUpTts),
+    MapEntry('vitesse rapide',VoiceCommand.speedUpTts),
+    // ── Emergency ────────────────────────────────────────────────────────
+    MapEntry('call for help', VoiceCommand.emergency),
+    MapEntry('au secours',    VoiceCommand.emergency),
+    MapEntry('help',          VoiceCommand.emergency),
+    // ── Module keywords (fallback if numbered not used) ──────────────────
+    MapEntry('obstacle',      VoiceCommand.option1),
+    MapEntry('read text',     VoiceCommand.option2),
+    MapEntry('lire texte',    VoiceCommand.option2),
+    MapEntry('describe scene',VoiceCommand.option3),
+    MapEntry('décrire',       VoiceCommand.option3),
+    MapEntry('identify money',VoiceCommand.option4),
+    MapEntry('identifier argent', VoiceCommand.option4),
+    MapEntry('who is this',   VoiceCommand.option5),
+    MapEntry('qui est',       VoiceCommand.option5),
+    MapEntry('settings',      VoiceCommand.option6),
+    MapEntry('paramètres',    VoiceCommand.option6),
+  ];
 
   Future<void> init(String locale) async {
     try {
@@ -57,26 +85,26 @@ class VoiceCommandService {
           if (!result.finalResult) return;
           _processTranscript(result.recognizedWords.toLowerCase());
         },
-        listenFor: const Duration(seconds: 30),
-        pauseFor: const Duration(seconds: 3),
-        partialResults: false,
-        localeId: localeId,
+        listenOptions: SpeechListenOptions(
+          listenFor: const Duration(seconds: 30),
+          pauseFor: const Duration(seconds: 3),
+          partialResults: false,
+          localeId: localeId,
+        ),
       );
     } catch (e) {
       debugPrint('Speech listen failed: $e');
     }
   }
 
-  void stopListening() {
-    _speech.stop();
-  }
+  void stopListening() => _speech.stop();
 
   @visibleForTesting
   void processTranscriptForTest(String transcript) =>
       _processTranscript(transcript.toLowerCase());
 
   void _processTranscript(String transcript) {
-    for (final entry in _commands.entries) {
+    for (final entry in _commandEntries) {
       if (transcript.contains(entry.key)) {
         _router.dispatch(entry.value);
         return;
@@ -86,14 +114,18 @@ class VoiceCommandService {
 }
 
 enum VoiceCommand {
-  startObstacle,
-  stopObstacle,
-  readText,
-  describeScene,
-  identifyMoney,
-  recogniseFace,
-  emergency,
+  // Numbered menu options (1-indexed, matching on-screen numbers)
+  option1,
+  option2,
+  option3,
+  option4,
+  option5,
+  option6,
+  // Control
+  stopCurrentOption,
   slowTts,
   speedUpTts,
   stopTts,
+  // Emergency
+  emergency,
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../injection_container.dart';
+import '../../../../main.dart' show globalStopCurrentOption;
 import '../bloc/currency_bloc.dart';
 
 class CurrencyPage extends StatelessWidget {
@@ -16,13 +17,36 @@ class CurrencyPage extends StatelessWidget {
   }
 }
 
-class _CurrencyView extends StatelessWidget {
+class _CurrencyView extends StatefulWidget {
   const _CurrencyView();
+
+  @override
+  State<_CurrencyView> createState() => _CurrencyViewState();
+}
+
+class _CurrencyViewState extends State<_CurrencyView> {
+  @override
+  void initState() {
+    super.initState();
+    globalStopCurrentOption = null; // no continuous loop
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final autoStart = ModalRoute.of(context)?.settings.arguments == true;
+      if (autoStart) {
+        context.read<CurrencyBloc>().add(const IdentifyCurrency());
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    globalStopCurrentOption = null;
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Identify Money')),
+      appBar: AppBar(title: const Text('Option 4 — Identify Money')),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(20),

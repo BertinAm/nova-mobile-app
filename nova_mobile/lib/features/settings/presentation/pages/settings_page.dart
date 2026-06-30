@@ -19,7 +19,6 @@ class _SettingsPageState extends State<SettingsPage> {
   late double _rate;
   late String _language;
   late bool _debugCamera;
-  late bool _highContrast;
 
   @override
   void initState() {
@@ -29,7 +28,6 @@ class _SettingsPageState extends State<SettingsPage> {
     _rate = _settings.speechRate.value;
     _language = _settings.language.value;
     _debugCamera = _settings.debugCameraPreview.value;
-    _highContrast = _settings.highContrastMode.value;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _tts.speak('Settings page. Swipe to explore options.', priority: TtsPriority.normal);
@@ -50,7 +48,7 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Settings'),
+        title: const Text('Option 6 — Settings'),
         actions: [
           Semantics(
             button: true,
@@ -118,9 +116,11 @@ class _SettingsPageState extends State<SettingsPage> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    _RatePresetButton(label: 'Slow', rate: 0.7, currentRate: _rate, onTap: _setRate),
-                    _RatePresetButton(label: 'Normal', rate: 1.0, currentRate: _rate, onTap: _setRate),
-                    _RatePresetButton(label: 'Fast', rate: 1.4, currentRate: _rate, onTap: _setRate),
+                    Expanded(child: _RatePresetButton(label: 'Slow', rate: 0.7, currentRate: _rate, onTap: _setRate)),
+                    const SizedBox(width: 8),
+                    Expanded(child: _RatePresetButton(label: 'Normal', rate: 1.0, currentRate: _rate, onTap: _setRate)),
+                    const SizedBox(width: 8),
+                    Expanded(child: _RatePresetButton(label: 'Fast', rate: 1.4, currentRate: _rate, onTap: _setRate)),
                   ],
                 ),
               ),
@@ -142,32 +142,6 @@ class _SettingsPageState extends State<SettingsPage> {
               displayName: 'Français',
               selectedCode: _language,
               onSelect: (code) => _setLanguage(code, 'Français sélectionné.'),
-            ),
-
-            const SizedBox(height: 8),
-            const Divider(),
-
-            // ─── Accessibility ──────────────────────────────────────────────
-            const _SectionHeader('Accessibility'),
-            Semantics(
-              label: 'High contrast mode',
-              value: _highContrast ? 'enabled' : 'disabled',
-              hint: 'Double tap to toggle',
-              toggled: _highContrast,
-              child: SwitchListTile(
-                title: const Text('High Contrast Mode'),
-                subtitle: const Text('Increases colour contrast for low-vision users'),
-                secondary: const Icon(Icons.contrast),
-                value: _highContrast,
-                onChanged: (val) async {
-                  setState(() => _highContrast = val);
-                  await _settings.setHighContrastMode(val);
-                  await _tts.speak(
-                    'High contrast mode ${val ? 'enabled' : 'disabled'}.',
-                    priority: TtsPriority.normal,
-                  );
-                },
-              ),
             ),
 
             const SizedBox(height: 8),
@@ -238,7 +212,6 @@ class _SettingsPageState extends State<SettingsPage> {
     final langName = _language == 'fr-CM' ? 'Français' : 'English';
     _tts.speak(
       'Current settings: Speed $_rateLabel. Language $langName. '
-      'High contrast ${_highContrast ? "on" : "off"}. '
       'Camera preview ${_debugCamera ? "on" : "off"}.',
       priority: TtsPriority.high,
       interrupt: true,

@@ -3,7 +3,7 @@ class AppConstants {
 
   static const bool simulated = bool.fromEnvironment(
     'NOVA_SIMULATED',
-    defaultValue: true,
+    defaultValue: false,
   );
 
   static const String apiBaseUrl = String.fromEnvironment(

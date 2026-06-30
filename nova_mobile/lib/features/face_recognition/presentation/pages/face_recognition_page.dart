@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../injection_container.dart';
+import '../../../../main.dart' show globalStopCurrentOption;
 import '../bloc/face_bloc.dart';
 
 class FaceRecognitionPage extends StatelessWidget {
@@ -27,15 +28,28 @@ class _FaceViewState extends State<_FaceView> {
   final _nameController = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    globalStopCurrentOption = null; // face has no continuous loop
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final autoStart = ModalRoute.of(context)?.settings.arguments == true;
+      if (autoStart) {
+        context.read<FaceBloc>().add(const RecogniseFace());
+      }
+    });
+  }
+
+  @override
   void dispose() {
     _nameController.dispose();
+    globalStopCurrentOption = null;
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Recognize Faces')),
+      appBar: AppBar(title: const Text('Option 5 — Recognize Faces')),
       body: SafeArea(
         child: BlocBuilder<FaceBloc, FaceState>(
           builder: (context, state) {

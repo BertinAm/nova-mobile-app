@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
 
+import '../../../../core/constants/app_constants.dart';
 import '../../../../core/tts/tts_service.dart';
 import '../../../../injection_container.dart';
+import '../../../../core/camera/camera_service.dart';
 
 class OnboardingPage extends StatefulWidget {
   const OnboardingPage({super.key});
@@ -11,6 +14,8 @@ class OnboardingPage extends StatefulWidget {
 }
 
 class _OnboardingPageState extends State<OnboardingPage> {
+  bool _requesting = false;
+
   @override
   void initState() {
     super.initState();
@@ -23,6 +28,29 @@ class _OnboardingPageState extends State<OnboardingPage> {
         priority: TtsPriority.high,
       );
     });
+  }
+
+  Future<void> _requestPermissionsAndGo() async {
+    setState(() => _requesting = true);
+    
+    // Request Camera, Microphone, and Location permissions
+    final statuses = await [
+      Permission.camera,
+      Permission.microphone,
+      Permission.location,
+    ].request();
+    
+    // Re-initialize camera now that we have permissions
+    if (!AppConstants.simulated) {
+      try {
+        await getIt<CameraService>().initialize();
+      } catch (_) {}
+    }
+    
+    if (mounted) {
+      setState(() => _requesting = false);
+      Navigator.pushReplacementNamed(context, '/home');
+    }
   }
 
   @override
@@ -77,7 +105,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                         spacing: 8,
                         runSpacing: 8,
                         alignment: WrapAlignment.center,
-                        children: const [
+                        children: [
                           _FeatureChip(Icons.warning_amber_outlined, 'Obstacle Detection'),
                           _FeatureChip(Icons.document_scanner_outlined, 'Read Text'),
                           _FeatureChip(Icons.image_search_outlined, 'Scene Description'),
@@ -112,11 +140,13 @@ class _OnboardingPageState extends State<OnboardingPage> {
               Semantics(
                 button: true,
                 label: 'Enter main menu',
-                hint: 'Opens the main menu with all features',
+                hint: 'Requests permissions and opens the main menu with all features',
                 child: ElevatedButton.icon(
-                  onPressed: () => Navigator.pushReplacementNamed(context, '/home'),
-                  icon: const Icon(Icons.home),
-                  label: const Text('Go to main menu'),
+                  onPressed: _requesting ? null : _requestPermissionsAndGo,
+                  icon: _requesting 
+                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.home),
+                  label: Text(_requesting ? 'Requesting Permissions…' : 'Go to main menu'),
                   style: ElevatedButton.styleFrom(minimumSize: const Size.fromHeight(56)),
                 ),
               ),
