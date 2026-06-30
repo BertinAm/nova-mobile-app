@@ -1,0 +1,1893 @@
+NOVA Navigational Object and Voice Assistant | Software Requirements Specification
+
+NOVA
+Navigational Object and Voice Assistant
+Software Requirements Specification (SRS)
+Version 1.0
+Field
+
+Value
+
+Project Title
+
+NOVA Navigational Object and Voice Assistant
+
+Document Type
+
+Software Requirements Specification
+
+Version
+
+1.0
+
+Status
+
+Draft
+
+Institution
+
+University of Buea, Faculty of Engineering and Technology
+
+Department
+
+Computer Engineering
+
+Course
+
+Internet of Things and Video Processing
+
+Academic Year
+
+2025/2026
+
+Target Platform
+
+Android (API 26+), Flutter
+
+Backend
+
+FastAPI (Python)
+
+Date
+
+June 2026
+
+1
+
+NOVA Navigational Object and Voice Assistant | Software Requirements Specification
+
+1. Introduction
+1.1 Purpose
+This Software Requirements Specification (SRS) defines the complete functional and non-functional
+requirements for NOVA (Navigational Object and Voice Assistant), a low-cost assistive vision mobile
+application designed for blind and visually impaired (BVI) users in Cameroon and broader
+Sub-Saharan Africa. NOVA targets Android devices running API level 26 (Android 8.0) and above,
+and is implemented using the Flutter framework.
+This document is intended for use by the development team, academic supervisors, and future
+maintainers of the system. It serves as the authoritative reference for all design, implementation,
+testing, and evaluation decisions made throughout the project lifecycle.
+
+1.2 Scope
+NOVA is a smartphone-based assistive vision system that uses the Android device camera, on-device
+machine learning inference, cloud-based inference for heavy tasks, and text-to-speech output to help
+BVI users navigate their environment, read text, identify currency, recognise known faces, and obtain
+scene descriptions.
+The system comprises four integrated components:
+•​
+
+A Flutter mobile application (Android) that captures camera frames, runs on-device ML
+inference, manages TTS output, and communicates with the backend.
+
+•​
+
+A FastAPI backend server that handles computationally expensive inference tasks (scene
+description, face recognition against server-side galleries) and serves updated ML models.
+
+•​
+
+A PostgreSQL relational database storing user profiles, enrolled faces, usage logs, and
+feedback.
+
+•​
+
+An ML pipeline (offline) producing quantized TensorFlow Lite models for obstacle detection
+and currency detection, deployed to the mobile app.
+
+The following are explicitly out of scope: iOS support, clinical diagnostic features, BLE beacon
+infrastructure, production-scale deployment, and longitudinal field studies beyond the project
+evaluation period.
+
+1.3 Definitions, Acronyms, and Abbreviations
+Term / Acronym
+
+Definition
+
+NOVA
+
+Navigational Object and Voice Assistant: the application name
+
+BVI
+
+Blind and Visually Impaired, the primary user population
+
+TTS
+
+Text-to-Speech synthesis of audible speech from text
+
+OCR
+
+Optical Character Recognition conversion of image text to machine-readable
+text
+
+CNN
+
+Convolutional Neural Network deep learning architecture for image tasks
+
+TFLite
+
+TensorFlow Lite on-device ML inference runtime for Android
+
+KD
+
+Knowledge Distillation model compression technique
+
+2
+
+NOVA Navigational Object and Voice Assistant | Software Requirements Specification
+
+Term / Acronym
+
+Definition
+
+PTQ
+
+Post-Training Quantization: quantization applied after training
+
+QAT
+
+Quantization-Aware Training: quantization applied during training
+
+NFR
+
+Non-Functional Requirement
+
+FR
+
+Functional Requirement
+
+API
+
+Application Programming Interface
+
+REST
+
+Representational State Transfer web API architectural style
+
+JWT
+
+JSON Web Token is a stateless authentication token
+
+CFA
+
+The Central African CFA franc is used in Cameroon
+
+FPS
+
+Frames Per Second
+
+NPU
+
+Neural Processing Unit, a dedicated ML accelerator on modern SoCs
+
+IoT
+
+Internet of Things
+
+SDLC
+
+Software Development Life Cycle
+
+MoSCoW
+
+Must / Should / Could / Won't requirement prioritisation framework
+
+1.4 References
+•​
+
+Bourne et al. (2021). Trends in the prevalence of blindness in The Lancet Global Health.
+
+•​
+
+Howard et al. (2017). MobileNets: Efficient CNNs for mobile vision. arXiv:1704.04861.
+
+•​
+
+Hinton, Vinyals & Dean (2015). Distilling the knowledge in a neural network.
+arXiv:1503.02531.
+
+•​
+
+Jacob et al. (2018). Quantization and training of neural networks. CVPR.
+
+•​
+
+Shi et al. (2016). Edge computing: Vision and challenges. IEEE IoT Journal.
+
+•​
+
+Barbareschi et al. (2020). The social network: Visual impairment mobile use in Kibera. CHI.
+
+•​
+
+Rodriguez-Garavito et al. (2025). Computer vision-based obstacle detection. Multimodal
+Tech.
+
+1.5 Overview
+This SRS is organised as follows: Section 2 provides an overall description of the product, its user
+classes, constraints, and assumptions. Section 3 defines all functional requirements. Section 4 defines
+all non-functional requirements. Section 5 describes system interfaces. Section 6 covers data
+requirements. Section 7 addresses security requirements.
+
+3
+
+NOVA Navigational Object and Voice Assistant | Software Requirements Specification
+
+2. Overall Description
+2.1 Product Perspective
+NOVA is a new, standalone mobile application positioned in the ecosystem of smartphone-based
+assistive technology. Unlike existing solutions such as Microsoft Seeing AI (iOS-first), Envision AI
+(cloud-dependent, subscription model), and OrCam MyEye (USD 4,500 dedicated hardware), NOVA
+is designed from the ground up for:
+•​
+
+Low-end Android devices (quad-core CPU, 2 GB RAM, no dedicated NPU) dominate the
+Cameroonian market.
+
+•​
+
+Intermittent mobile data, all safety-critical features operate fully offline.
+
+•​
+
+The CFA franc currency zone and bilingual French/English Cameroonian context.
+
+•​
+
+A zero-cost-to-user model, the application is free with no subscription.
+
+NOVA follows an IoT architecture: the Android smartphone acts as the edge endpoint for real-time
+inference; the FastAPI backend acts as the cloud service for heavy computation; and an operator
+dashboard (separate from this SRS) monitors system health and usage.
+
+2.2 Product Functions (Summary)
+NOVA delivers five core user-facing feature modules:
+Module
+
+ID
+
+Description
+
+Inference Location
+
+Obstacle Detection
+
+MOD-01
+
+Real-time forward obstacle detection
+with directional TTS alerts
+
+On-device (TFLite)
+
+Text Reading
+(OCR)
+
+MOD-02
+
+Camera-based OCR with TTS
+read-aloud
+
+On-device (ML Kit)
+
+Scene Description
+
+MOD-03
+
+Natural-language scene description on
+user request
+
+Cloud (FastAPI)
+
+Currency
+Detection
+
+MOD-04
+
+CFA franc denomination identification
+
+On-device (TFLite)
+
+Face Recognition
+
+MOD-05
+
+Recognition and announcement of
+enrolled known contacts
+
+Hybrid (TFLite detect
++ Cloud match)
+
+2.3 User Classes and Characteristics
+2.3.1 Primary User Blind or Visually Impaired Individual
+The primary user is an adult (18–65) who is bilaterally blind or has severe visual impairment, owns or
+has access to an Android smartphone (API 26+), and communicates in French and/or English. This
+user interacts with NOVA exclusively through voice commands and audio output. They cannot rely on
+any visual interface element. Their primary needs are: safe navigation (obstacle avoidance), reading
+printed text in their environment, identifying banknotes, recognising familiar people, and
+understanding scenes they cannot perceive.
+
+2.3.2 Secondary User Caregiver or Support Person
+
+4
+
+NOVA Navigational Object and Voice Assistant | Software Requirements Specification
+
+A caregiver or family member may assist with initial app setup, face enrolment, and emergency
+contact configuration. This user may have partial or full vision and can interact with visual interface
+elements during setup. After setup, this user is not involved in routine operation.
+
+2.3.3 Operator / Developer
+A developer or project team member accesses the backend operator dashboard to monitor usage logs,
+model performance, and aggregate feedback. This user interacts with the system entirely through the
+web dashboard and has no special mobile interface.
+
+2.4 Operating Environment
+Component
+
+Specification
+
+Mobile OS
+
+Android 8.0 (API 26) through Android 15 (API 35)
+
+Reference a low-end device
+
+Quad-core 1.4 GHz, 2 GB RAM, 16 GB storage, no NPU
+
+Reference mid-range device
+
+Octa-core 2.0 GHz, 4 GB RAM, 64 GB storage, optional NPU
+
+Camera
+
+Rear camera, minimum 8 MP, autofocus
+
+Network
+
+2G/3G/4G LTE must function with no connectivity for core features
+
+Backend server
+
+Linux VPS, Python 3.11+, FastAPI, PostgreSQL 15
+
+TTS engine
+
+Android TextToSpeech API (on-device, no network required)
+
+ML runtime
+
+TensorFlow Lite 2.14+, Google ML Kit (on-device)
+
+2.5 Design and Implementation Constraints
+•​
+
+All safety-critical features (obstacle detection, OCR, and currency detection) MUST function
+with zero network connectivity.
+
+•​
+
+On-device quantized model size per feature module MUST NOT exceed 20 MB.
+
+•​
+
+On-device inference latency for obstacle detection MUST remain below 100 ms per frame.
+
+•​
+
+The application MUST NOT transmit raw camera frames to the server at any time unless the
+user explicitly triggers a cloud feature (scene description, cloud face matching).
+
+•​
+
+All user-facing interactions MUST be operable via TalkBack screen reader and voice
+commands; no critical function may require visual feedback.
+
+•​
+
+The application MUST support Android TalkBack out-of-the-box (ContentDescription on all
+interactive elements).
+
+•​
+
+Battery consumption during continuous active use MUST remain below 25% per hour on the
+reference low-end device.
+
+•​
+
+The app MUST be distributable as a standard APK without requiring Google Play Store
+access.
+
+2.6 Assumptions and Dependencies
+•​
+
+Users have a functional Android device with a working rear camera and speaker.
+
+•​
+
+Enrolled face images are provided by the user or caregiver during setup; NOVA does not
+perform unsolicited face surveillance.
+
+5
+
+NOVA Navigational Object and Voice Assistant | Software Requirements Specification
+
+•​
+
+The FastAPI backend is hosted on a server with a stable internet connection; only the mobile
+device operates under intermittent connectivity.
+
+•​
+
+The TensorFlow Lite runtime is bundled within the Flutter app (not downloaded at runtime).
+
+•​
+
+Google ML Kit for OCR is used for on-device text recognition; it operates offline once
+downloaded.
+
+•​
+
+CFA franc note images used for training the currency detection model are sourced from the
+Bank of Central African States (BEAC) official reference images plus field-collected samples.
+
+6
+
+NOVA Navigational Object and Voice Assistant | Software Requirements Specification
+
+3. Functional Requirements
+3.1 Module MOD-01: Obstacle Detection
+3.1.1 Overview
+MOD-01 provides continuous, real-time detection of obstacles in the user's forward field of view
+using the device's rear camera. The module runs a quantized object detection model on-device and
+issues directional audio alerts through the device speaker (or connected audio output) when obstacles
+are detected within configurable distance thresholds. MOD-01 is the highest-priority safety feature
+and must function fully offline.
+
+3.1.2 Functional Requirements
+ID
+
+Requirement
+
+Priority
+
+Rationale
+
+FR-01-01
+
+The system SHALL activate the rear camera and
+begin processing frames when MOD-01 is
+active.
+
+Must
+
+Core precondition for all detection.
+
+FR-01-02
+
+The system SHALL run a quantized
+MobileNetV3-SSD or YOLOv8-nano TFLite
+model at a minimum of 10 FPS on the reference
+low-end device.
+
+Must
+
+Below 10 FPS, alerts arrive too late
+to be useful.
+
+FR-01-03
+
+The system SHALL detect obstacles from the
+80-class COCO dataset plus an extended set of
+pedestrian-environment obstacles (open
+manholes, motorbikes, market stalls,
+low-hanging objects).
+
+Must
+
+COCO covers most obstacles;
+extension covers the Cameroonian
+context.
+
+FR-01-04
+
+When an obstacle is detected within the
+near-zone threshold (configurable, default 1.5 m
+estimated), the system SHALL immediately emit
+a TTS alert naming the obstacle and its
+approximate direction (left, centre, right) relative
+to the camera frame.
+
+Must
+
+Directional information is critical
+for navigation response.
+
+FR-01-05
+
+When an obstacle is detected within the
+warning-zone threshold (configurable, default
+3.0 m estimated), the system SHALL emit a
+lower-urgency audio tone followed by a TTS
+alert.
+
+Should
+
+Graduated alerts reduce panic and
+improve navigation.
+
+FR-01-06
+
+The system SHALL suppress repeated alerts for
+the same tracked obstacle for a configurable
+suppression period (default 2.0 seconds) to
+prevent alert fatigue.
+
+Must
+
+Without suppression, continuous
+alerts cause users to disable the
+feature.
+
+FR-01-07
+
+The system SHALL use bounding box width and
+object class to estimate approximate distance in
+the absence of a depth sensor, using
+class-specific reference sizes.
+
+Should
+
+Monocular depth estimation from
+size is the only viable approach
+without dedicated hardware.
+
+7
+
+NOVA Navigational Object and Voice Assistant | Software Requirements Specification
+
+ID
+
+Requirement
+
+Priority
+
+Rationale
+
+FR-01-08
+
+The system SHALL allow the user to toggle
+MOD-01 on/off via a single voice command
+('Start obstacle detection', 'Stop obstacle
+detection').
+
+Must
+
+Full voice control is required for
+BVI users.
+
+FR-01-09
+
+The system SHALL continue obstacle detection
+with the screen off (background processing) to
+conserve battery.
+
+Should
+
+Screen-off operation significantly
+extends battery life during
+navigation.
+
+FR-01-10
+
+The system SHALL log detection events
+(timestamp, class, confidence, approximate zone)
+locally, and sync to the backend when
+connectivity is available.
+
+Could
+
+Supports operator analytics and
+model improvement.
+
+3.2 Module MOD-02: Text Reading (OCR)
+3.2.1 Overview
+MOD-02 enables the user to read any printed or handwritten text visible to the camera. The user
+triggers OCR via a voice command or a single hardware button press. The system captures a still
+frame, processes it through Google ML Kit's on-device OCR engine, and reads the result aloud via
+TTS. MOD-02 operates fully offline.
+
+3.2.2 Functional Requirements
+ID
+
+Requirement
+
+Priori
+ty
+
+Rationale
+
+FR-02-01
+
+The system SHALL capture a high-resolution
+still frame from the rear camera when the user
+triggers OCR.
+
+Must
+
+Higher resolution improves OCR
+accuracy on small text.
+
+FR-02-02
+
+The system SHALL process the captured frame
+using Google ML Kit Text Recognition v2 (Latin
+and French script support).
+
+Must
+
+ML Kit provides offline, on-device
+OCR with no additional cost.
+
+FR-02-03
+
+The system SHALL read the recognised text
+aloud in its detected reading order
+(top-to-bottom, left-to-right) via TTS.
+
+Must
+
+Reading order matters for
+comprehension of signs, documents,
+and labels.
+
+FR-02-04
+
+The system SHALL detect the dominant
+language of the recognised text and set the TTS
+language accordingly (English or French).
+
+Shoul
+d
+
+The Cameroonian environment is
+bilingual; incorrect TTS language
+renders output incomprehensible.
+
+FR-02-05
+
+If no text is detected in the captured frame, the
+system SHALL announce 'No text detected. Try
+moving the camera closer.'
+
+Must
+
+Informative failure messages are
+required for BVI users who cannot
+see the frame.
+
+FR-02-06
+
+The system SHALL allow the user to re-trigger
+OCR immediately or cancel the current reading
+via voice command.
+
+Must
+
+Users need to correct mispositioning
+without navigating menus.
+
+8
+
+NOVA Navigational Object and Voice Assistant | Software Requirements Specification
+
+ID
+
+Requirement
+
+Priori
+ty
+
+Rationale
+
+FR-02-07
+
+The system SHALL allow the user to adjust TTS
+reading speed (slow, normal, fast) via a voice
+command or settings.
+
+Shoul
+d
+
+Reading speed preferences vary;
+dense documents may require a
+slower speed.
+
+FR-02-08
+
+The system SHALL support a continuous
+document reading mode where successive
+captures are stitched to read multi-page or
+multi-panel content.
+
+Could
+
+Useful for reading letters, forms, and
+pamphlets in sequence.
+
+FR-02-09
+
+The system SHALL log OCR trigger events
+(timestamp, text length, language detected) for
+analytics, with no raw text stored on the
+backend.
+
+Could
+
+Preserves user privacy while
+enabling usage analytics.
+
+3.3 Module MOD-03: Scene Description
+3.3.1 Overview
+MOD-03 generates a natural-language description of the scene visible to the camera. This feature is
+cloud-dependent when triggered; a compressed still frame is sent to the FastAPI backend, which
+passes it to a vision-language model (VLM) and returns a text description that NOVA reads aloud.
+MOD-03 is explicitly not a safety feature and is documented as cloud-dependent to the user.
+
+3.3.2 Functional Requirements
+ID
+
+Requirement
+
+Priori
+ty
+
+Rationale
+
+FR-03-01
+
+When the user triggers scene description via
+voice command, the system SHALL check
+network connectivity before proceeding.
+
+Must
+
+Scene description cannot function
+offline; the user must be informed.
+
+FR-03-02
+
+If no connectivity is available, the system
+SHALL announce 'Scene description requires an
+internet connection. Please try again when
+connected.' and abort.
+
+Must
+
+Offline failure must be graceful and
+informative.
+
+FR-03-03
+
+If connectivity is available, the system SHALL
+capture a JPEG still frame, compress it to a
+maximum of 512 KB, and transmit it to the
+FastAPI /scene/describe endpoint over HTTPS.
+
+Must
+
+Compression reduces data usage on
+expensive mobile plans.
+
+FR-03-04
+
+The FastAPI backend SHALL pass the image to
+a vision-language model (default: BLIP-2 or a
+cloud-hosted LLM with vision) and return a
+concise scene description (maximum 80 words).
+
+Must
+
+Concise descriptions are easier to
+process via audio.
+
+FR-03-05
+
+NOVA SHALL read the returned description
+aloud via TTS within 5 seconds of the user's
+trigger on a 4G connection.
+
+Shoul
+d
+
+5 seconds is the upper bound for a
+perceptually responsive action.
+
+9
+
+NOVA Navigational Object and Voice Assistant | Software Requirements Specification
+
+ID
+
+Requirement
+
+Priori
+ty
+
+Rationale
+
+FR-03-06
+
+The system SHALL announce 'Describing the
+scene, please wait.' immediately after the request
+is sent, to confirm the action was received.
+
+Must
+
+BVI users need audio confirmation
+that a cloud request is in progress.
+
+FR-03-07
+
+If the server returns an error or times out after 8
+seconds, the system SHALL announce 'Scene
+description is unavailable right now. Please try
+again later.'
+
+Must
+
+Graceful timeout handling prevents
+silent failures.
+
+FR-03-08
+
+No raw image frames captured for scene
+description SHALL be stored persistently on the
+backend server; processing is transient.
+
+Must
+
+Privacy requirement: camera data
+must not accumulate on the server.
+
+3.4 Module MOD-04: Currency Detection
+3.4.1 Overview
+MOD-04 identifies the denomination of Central African CFA franc banknotes (Series issued by
+BEAC: 500, 1000, 2000, 5000, 10000 FCFA) presented to the camera. The module uses a dedicated
+quantized TFLite classification model trained on CFA franc note images. Detection is fully on-device.
+
+3.4.2 Functional Requirements
+ID
+
+Requirement
+
+Priority
+
+Rationale
+
+FR-04-01
+
+The system SHALL activate MOD-04 via voice
+command ('Identify money', 'Check note').
+
+Must
+
+Voice-only activation is required
+for BVI users.
+
+FR-04-02
+
+The system SHALL capture a still frame and
+process it through a TFLite classification model
+trained on all current BEAC CFA franc
+denominations (500, 1000, 2000, 5000, 10000
+FCFA).
+
+Must
+
+All current denominations must
+be supported.
+
+FR-04-03
+
+The system SHALL announce the detected
+denomination (e.g., 'One thousand francs CFA')
+when confidence exceeds a threshold of 0.85.
+
+Must
+
+A high confidence threshold
+prevents false announcements that
+could mislead the user.
+
+FR-04-04
+
+If confidence is below 0.85, the system SHALL
+announce 'Could not identify the note clearly.
+Please try again with better lighting or closer to
+the camera.'
+
+Must
+
+Graceful low-confidence handling
+prevents silent errors.
+
+FR-04-05
+
+The system SHALL support both sides (obverse
+and reverse) of each denomination.
+
+Should
+
+Users may hold notes in either
+orientation; the model must be
+robust.
+
+FR-04-06
+
+The system SHALL function in typical indoor
+lighting conditions (200–800 lux); a
+torch/flashlight activation reminder SHALL be
+issued if the frame is detected as underexposed.
+
+Should
+
+Poor lighting is a common issue
+in Cameroonian indoor
+environments.
+
+10
+
+NOVA Navigational Object and Voice Assistant | Software Requirements Specification
+
+ID
+
+Requirement
+
+Priority
+
+Rationale
+
+FR-04-07
+
+Detection SHALL complete within 500 ms of
+frame capture on the reference low-end device.
+
+Must
+
+Currency identification is a
+user-triggered, time-sensitive
+interaction.
+
+3.5 Module MOD-05: Face Recognition
+3.5.1 Overview
+MOD-05 allows the user to enrol known contacts (family members, colleagues, caregivers) by
+providing photos during setup. When the user triggers face recognition, the front or rear camera scans
+the scene, detected faces are matched against the enrolled gallery, and recognised individuals are
+announced by name via TTS. Detection occurs on-device; matching against the enrolled gallery may
+be performed on-device (if the gallery is small, <= 20 faces) or via a backend API call (for larger
+galleries).
+
+3.5.2 Functional Requirements
+ID
+
+Requirement
+
+Priority
+
+Rationale
+
+FR-05-01
+
+The system SHALL allow a sighted caregiver or
+the user to enrol contacts during setup by
+capturing 3–5 photos of each person and
+providing a spoken name label.
+
+Must
+
+Enrolment is the prerequisite for all
+face recognition functionality.
+
+FR-05-02
+
+The system SHALL detect faces in the camera
+frame using an on-device TFLite face detection
+model (BlazeFace or equivalent) at a minimum
+of 10 FPS.
+
+Must
+
+On-device detection ensures faces
+are found even offline.
+
+FR-05-03
+
+For galleries of 20 or fewer enrolled contacts, the
+system SHALL perform face embedding
+comparison entirely on-device using a quantized
+MobileFaceNet model.
+
+Must
+
+Fully offline for small galleries.
+
+FR-05-04
+
+For galleries exceeding 20 enrolled contacts, the
+system SHALL transmit detected face crops (not
+full frames) to the FastAPI /faces/match endpoint
+for server-side matching.
+
+Should
+
+Server-side matching scales to
+larger galleries without increasing
+device memory.
+
+FR-05-05
+
+When a match is found with cosine similarity
+above the threshold (default: 0.75), the system
+SHALL announce the contact's name via TTS.
+
+Must
+
+Threshold prevents false positive
+announcements.
+
+FR-05-06
+
+When no match is found, the system SHALL
+announce 'Unknown person detected' if a face
+was detected, or remain silent if no face is
+detected.
+
+Must
+
+Distinguish between a no-face and
+an unknown face.
+
+FR-05-07
+
+The system SHALL not perform continuous
+unsolicited face scanning; MOD-05 SHALL only
+activate on explicit user voice command.
+
+Must
+
+Privacy requirement: Passive
+surveillance is explicitly
+prohibited.
+
+11
+
+NOVA Navigational Object and Voice Assistant | Software Requirements Specification
+
+ID
+
+Requirement
+
+Priority
+
+Rationale
+
+FR-05-08
+
+Face embedding vectors stored on the backend
+SHALL be encrypted at rest; raw enrolment
+images SHALL NOT be retained after
+embedding extraction.
+
+Must
+
+Biometric data privacy;
+embeddings are less sensitive than
+raw images.
+
+FR-05-09
+
+The user SHALL be able to delete any enrolled
+contact and their associated embeddings via
+voice command.
+
+Must
+
+Right to erasure for biometric data.
+
+3.6 Cross-Cutting Functional Requirements
+ID
+
+Requirement
+
+Priority
+
+FR-06-01
+
+The system SHALL provide a fully
+voice-navigable main menu with modules
+addressable by spoken command or
+TalkBack swipe.
+
+Must
+
+FR-06-02
+
+The system SHALL support bilingual TTS
+output in English and French, selectable in
+settings.
+
+Must
+
+FR-06-03
+
+The system SHALL provide haptic
+feedback (vibration) as a secondary alert
+channel for obstacle detection and face
+recognition, to support users in noisy
+environments.
+
+Should
+
+FR-06-04
+
+The system SHALL allow the user to set
+an emergency contact and trigger location
+sharing via voice command ('Call for help',
+'Send my location').
+
+Should
+
+FR-06-05
+
+The system SHALL provide an
+onboarding tutorial narrated entirely via
+TTS at first launch, covering all five
+modules.
+
+Must
+
+FR-06-06
+
+The system SHALL sync usage event logs
+(module activations, errors, user feedback
+ratings) to the backend when the network
+is available, using a queue that persists
+across app restarts.
+
+Could
+
+FR-06-07
+
+The system SHALL support OTA model
+updates when a new quantized model is
+available on the backend, the app SHALL
+download and hot-swap it on next launch,
+with user notification via TTS.
+
+Should
+
+FR-06-08
+
+The system SHALL allow the user to rate
+the usefulness of any interaction
+
+Could
+
+12
+
+NOVA Navigational Object and Voice Assistant | Software Requirements Specification
+
+ID
+
+Requirement
+
+Priority
+
+(good/bad) via a voice command
+immediately after an interaction.
+FR-06-09
+
+After downloading a model update via
+OTA, the system SHALL verify the
+SHA-256 checksum of the downloaded
+file against the value stored in the model
+registry. If verification fails, the system
+SHALL discard the downloaded file, retain
+the previously installed model, and
+announce "Model update failed. Using
+previous version." via TTS.
+
+Must
+
+13
+
+NOVA Navigational Object and Voice Assistant | Software Requirements Specification
+
+4. Non-Functional Requirements
+4.1 Performance Requirements
+ID
+
+Requirement
+
+Target
+
+Measurement Method
+
+NFR-01
+
+Obstacle detection frame rate
+(low-end device)
+
+>= 10 FPS
+
+Stopwatch + Android Profiler during
+60s walking session
+
+NFR-02
+
+Obstacle detection inference
+latency
+
+< 100 ms per frame
+
+TFLite inference time logging
+
+NFR-03
+
+OCR processing time (A4
+document, on-device)
+
+< 3 seconds
+
+Measured from trigger to first TTS
+word
+
+NFR-04
+
+Currency detection latency
+
+< 500 ms per trigger
+
+Measured from trigger to TTS
+announcement
+
+NFR-05
+
+Scene description end-to-end
+latency (4G)
+
+< 5 seconds
+
+Measured from trigger to first TTS
+word
+
+NFR-06
+
+Face detection frame rate
+
+>= 10 FPS
+
+Android Profiler
+
+NFR-07
+
+App cold start time
+
+< 4 seconds
+
+Measured from launch icon tap to
+main menu TTS
+
+NFR-08
+
+TTS announcement initiation
+delay
+
+< 200 ms from
+trigger
+
+Audio timestamp comparison
+
+4.2 Model Size and Memory Requirements
+ID
+
+Requirement
+
+Target
+
+NFR-09
+
+Quantized obstacle detection model size (TFLite INT8)
+
+< 15 MB
+
+NFR-10
+
+Quantized currency detection model size (TFLite INT8)
+
+< 10 MB
+
+NFR-11
+
+On-device face detection model size (BlazeFace)
+
+< 5 MB
+
+NFR-12
+
+On-device face embedding model size (MobileFaceNet
+INT8)
+
+< 12 MB
+
+NFR-13
+
+Total on-device ML model footprint
+
+< 45 MB
+
+NFR-14
+
+App RAM usage during obstacle detection (foreground)
+
+< 350 MB
+
+NFR-15
+
+App RAM usage during background detection (screen
+off)
+
+< 200 MB
+
+4.3 Battery and Energy Requirements
+ID
+
+Requirement
+
+Target
+
+NFR-16
+
+Battery drain during continuous obstacle detection (screen
+off)
+
+< 25% per hour on the reference device
+
+14
+
+NOVA Navigational Object and Voice Assistant | Software Requirements Specification
+
+ID
+
+Requirement
+
+Target
+
+NFR-17
+
+Battery drain during standby (app backgrounded, no
+active module)
+
+< 3% per hour
+
+NFR-18
+
+Camera warm-up and model loading energy
+
+Included in the per-hour measurement
+above
+
+4.4 Reliability and Availability
+ID
+
+Requirement
+
+Target
+
+NFR-19
+
+App crash rate during obstacle detection session
+
+< 1 crash per 100 sessions
+
+NFR-20
+
+Graceful recovery from network disconnection
+
+All offline features continue without a
+restart
+
+NFR-21
+
+Graceful recovery from camera access failure
+
+TTS error message; no crash
+
+NFR-22
+
+Graceful recovery from TFLite model loading failure
+
+TTS error message; alternative cloud
+fallback offered
+
+NFR-23
+
+Backend API availability target
+
+>= 99% uptime (project evaluation
+period)
+
+NFR-24
+
+Offline queue persistence for usage logs
+
+Logs persist across app restart and
+device reboot
+
+4.5 Security Requirements
+ID
+
+Requirement
+
+NFR-25
+
+All backend API calls SHALL use HTTPS (TLS 1.2 or higher); plaintext HTTP is not permitted.
+
+NFR-26
+
+User authentication SHALL use JWT tokens with a 24-hour expiry and refresh token rotation.
+
+NFR-27
+
+Face embedding vectors SHALL be stored encrypted at rest on the backend (AES-256).
+
+NFR-28
+
+Raw camera frames SHALL NOT be transmitted to the backend except on explicit user request
+(MOD-03, MOD-05 cloud path); the backend SHALL NOT log image data.
+
+NFR-29
+
+API endpoints SHALL enforce rate limiting (60 requests/minute per authenticated user) to prevent
+abuse.
+
+NFR-30
+
+User passwords SHALL be hashed using bcrypt with a minimum cost factor of 12.
+
+NFR-31
+
+The mobile app SHALL NOT request permissions beyond camera, microphone, location
+(emergency feature), internet, and vibrate.
+
+4.6 Usability and Accessibility Requirements
+ID
+
+Requirement
+
+NFR-32
+
+All interactive UI elements SHALL have a ContentDescription attribute for TalkBack
+compatibility.
+
+15
+
+NOVA Navigational Object and Voice Assistant | Software Requirements Specification
+
+ID
+
+Requirement
+
+NFR-33
+
+No critical function SHALL require visual feedback; all confirmations, errors, and results SHALL
+be communicated via TTS.
+
+NFR-34
+
+Voice command recognition SHALL function with typical ambient noise levels (up to 65 dB,
+equivalent to a busy street).
+
+NFR-35
+
+TTS speech rate SHALL be configurable between 0.5x and 2.0x normal rate.
+
+NFR-36
+
+The onboarding tutorial SHALL be completable in under 5 minutes without sighted assistance.
+
+NFR-37
+
+The app SHALL support Android font scaling and display size settings without layout breakage
+(for low-vision users who use both visual and audio interfaces).
+
+4.7 Maintainability and Portability
+ID
+
+Requirement
+
+NFR-38
+
+The Flutter codebase SHALL follow a feature-first folder structure with clearly separated domain,
+data, and presentation layers.
+
+NFR-39
+
+The FastAPI backend SHALL be containerised (Docker) for reproducible deployment.
+
+NFR-40
+
+TFLite models SHALL be versioned and served through the backend model registry; the mobile app
+SHALL support model hot-swapping without reinstallation.
+
+NFR-41
+
+All API endpoints SHALL be documented via FastAPI auto-generated OpenAPI (Swagger)
+documentation.
+
+NFR-42
+
+Unit test coverage for the FastAPI backend SHALL exceed 70% of business logic.
+
+16
+
+NOVA Navigational Object and Voice Assistant | Software Requirements Specification
+
+5. External Interface Requirements
+5.1 User Interfaces
+NOVA's mobile UI is designed around the principle of audio-first interaction. Visual elements are
+present for sighted caregivers and setup scenarios, but are never the sole interface for any function.
+•​
+
+Main Menu: Five large, high-contrast buttons (one per module) with icons and spoken labels.
+TalkBack-navigable. Voice shortcut overlay always active.
+
+•​
+
+Settings Screen: Voice-navigable list of configurable parameters (TTS speed, thresholds,
+language, emergency contact). All changes confirmed via TTS.
+
+•​
+
+Enrolment Screen (MOD-05): Camera viewfinder with audio guidance for centering the face;
+the sighted caregiver can verify the frame before capture.
+
+•​
+
+Status Overlay: A minimal always-visible strip showing active module and connectivity
+status, readable by TalkBack.
+
+5.2 Hardware Interfaces
+•​
+
+Rear Camera: Accessed via Flutter camera plugin (android.hardware.camera2 API).
+Minimum 8 MP, autofocus required.
+
+•​
+
+Microphone: Accessed via Flutter speech_to_text plugin for voice command recognition.
+
+•​
+
+Speaker/Audio Output: Accessed via Android TextToSpeech API and audio_session plugin
+for routing to Bluetooth if connected.
+
+•​
+
+Vibration Motor: Accessed via Flutter vibration plugin for haptic alerts.
+
+•​
+
+GPS: Accessed via Flutter geolocator plugin for emergency location sharing (MOD
+emergency feature).
+
+5.3 Software Interfaces
+Interface
+
+Direction
+
+Protocol/API
+
+Purpose
+
+Google ML Kit Text
+Recognition v2
+
+Local
+library
+
+Dart FFI / plugin
+
+On-device OCR
+
+TensorFlow Lite
+
+Local
+library
+
+tflite_flutter plugin
+
+On-device CNN inference
+
+Android TextToSpeech
+
+Local OS
+API
+
+Platform channel
+
+Audio output
+
+FastAPI Backend
+/scene/describe
+
+Outbound
+
+HTTPS REST
+POST
+
+Cloud scene description
+
+FastAPI Backend
+/faces/match
+
+Outbound
+
+HTTPS REST
+POST
+
+Cloud face matching
+
+FastAPI Backend
+/auth/*
+
+Outbound
+
+HTTPS REST
+POST
+
+User authentication
+
+FastAPI Backend
+/models/latest
+
+Outbound
+
+HTTPS REST
+GET
+
+OTA model updates
+
+17
+
+NOVA Navigational Object and Voice Assistant | Software Requirements Specification
+
+Interface
+
+Direction
+
+Protocol/API
+
+Purpose
+
+FastAPI Backend
+/logs/sync
+
+Outbound
+
+HTTPS REST
+POST
+
+Usage log sync
+
+Android SMS Manager
+
+Outbound
+
+Platform channel
+
+Emergency location SMS
+
+5.4 Communication Interfaces
+•​
+
+HTTPS (TLS 1.2+): All client-server communication. Port 443.
+
+•​
+
+JSON: Request and response body format for all API endpoints.
+
+•​
+
+JWT Bearer tokens: Passed in the Authorization header for all authenticated endpoints.
+
+•​
+
+Offline queue: SQLite local database (drift ORM in Flutter) stores unsynced log events;
+flushed to the backend on the next available connection.
+
+18
+
+NOVA Navigational Object and Voice Assistant | Software Requirements Specification
+
+6. Data Requirements
+6.1 Logical Data Model (Summary)
+The system manages six primary data entities:
+Entity
+
+Key Attributes
+
+Storage Location
+
+User
+
+user_id, email, password_hash, preferred_language,
+created_at
+
+PostgreSQL (backend)
+
+EnrolledFace
+
+face_id, user_id, contact_name, embedding_vector
+(encrypted), created_at
+
+PostgreSQL (backend)
+
+UsageEvent
+
+event_id, user_id, module_id, timestamp, outcome,
+confidence_score
+
+SQLite (device) + PostgreSQL
+(synced)
+
+UserFeedback
+
+feedback_id, event_id, rating (positive/negative),
+timestamp
+
+SQLite (device) + PostgreSQL
+(synced)
+
+ModelRegistry
+
+model_id, module_id, version, filename, checksum,
+uploaded_at, is_active
+
+PostgreSQL (backend)
+
+EmergencyContact
+
+contact_id, user_id, name, phone_number, encrypted
+
+PostgreSQL (backend)
+
+6.2 Data Retention Policy
+•​
+
+Raw camera frames: Never persisted. Processed in memory; discarded after inference.
+
+•​
+
+Scene description images: Transmitted to backend for processing; not stored after response is
+generated.
+
+•​
+
+Face enrolment images: Used to generate embeddings; not stored after embedding extraction
+on the backend.
+
+•​
+
+Usage event logs: Retained on the backend for 12 months for analytics; anonymised after 12
+months.
+
+•​
+
+Face embedding vectors: Retained until the user explicitly deletes the enrolled contact.
+
+•​
+
+JWT refresh tokens: Expire after 30 days; invalidated on explicit logout.
+
+19
+
+NOVA Navigational Object and Voice Assistant | Software Requirements Specification
+
+7. Verification and Validation Requirements
+Requirement
+ID
+
+Verification Method
+
+Acceptance Criterion
+
+FR-01-02
+
+Automated benchmark on reference
+device
+
+>= 10 FPS sustained over a 60-second test
+
+FR-01-06
+
+Unit test: alert suppression logic
+
+No repeat alert within 2.0 s for the same tracked
+object ID
+
+FR-02-02
+
+Functional test: 10 printed text samples
+
+>= 90% word accuracy on clear printed text
+
+FR-03-05
+
+End-to-end timing test on 4G
+
+< 5 s from trigger to first TTS word in 90% of
+trials
+
+FR-04-03
+
+Functional test: 50 note images per
+denomination
+
+>= 95% accuracy when confidence > 0.85
+
+FR-05-05
+
+Functional test: enrolled a gallery of 10
+contacts
+
+>= 90% recognition rate; < 5% false positive rate
+
+NFR-01
+
+Android Profiler, 60 s walking test
+
+>= 10 FPS on reference device
+
+NFR-16
+
+Battery drain test: 1 hour active detection
+
+< 25% battery drop on reference device
+
+NFR-25
+
+Network traffic inspection (Charles
+Proxy)
+
+Zero plaintext HTTP requests observed
+
+NFR-32
+
+TalkBack automated audit (Accessibility
+Scanner)
+
+Zero critical accessibility errors
+
+20
+
+
